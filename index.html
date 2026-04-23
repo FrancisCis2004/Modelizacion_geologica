@@ -197,9 +197,12 @@
 
                             <section class="space-y-4">
                                 <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Diagrama de Flujo del Proceso</h4>
-                                <div class="w-full aspect-video rounded-2xl border-2 border-dashed border-slate-200 image-placeholder flex flex-col items-center justify-center p-6 text-center">
-                                    <i data-lucide="image" class="w-8 h-8 text-slate-300 mb-2"></i>
-                                    <p class="text-xs font-medium text-slate-500">Insertar aquí: <code class="bg-slate-100 px-1 rounded text-uceBlue">diagrama_generacion_datos.png</code></p>
+                                <!-- Actualización: Ruta de imagen relativa para GitHub -->
+                                <div class="w-full rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-100 min-h-[200px] flex items-center justify-center">
+                                    <img src="./diagrama_generacion_datos.png" 
+                                         alt="Diagrama de Flujo" 
+                                         class="max-w-full h-auto"
+                                         onerror="this.parentElement.innerHTML='<div class=\'p-8 text-center\'><i data-lucide=\'image-off\' class=\'w-12 h-12 text-slate-300 mx-auto mb-2\'></i><p class=\'text-xs text-slate-400\'>Imagen no encontrada: diagrama_generacion_datos.png<br>Verifica que el nombre coincida exactamente en GitHub</p></div>'; lucide.createIcons();">
                                 </div>
                             </section>
                         </div>
