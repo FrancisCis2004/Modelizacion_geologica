@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UCE - Estimación de Recursos Minerales IA</title>
+    <!-- Motores de Diseño y Lógica -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Iconos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        // Configuración de tema personalizado con colores de la UCE
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        uceBlue: '#003366',
+                        uceBlueLight: '#0055aa',
+                        uceWhite: '#FFFFFF',
+                    },
+                    screens: {
+                        'xs': '375px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .gradient-uce { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); }
+        
+        /* Personalización de scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        /* Estilos para el estado activo de la navegación lateral */
+        .sidebar-item-active { 
+            background-color: #f1f5f9; 
+            color: #003366; 
+            border-left: 4px solid #003366;
+            font-weight: 700;
+        }
+
+        /* Ajuste para dispositivos móviles con notch */
+        .safe-area-bottom {
+            padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+        }
+
+        /* Patrón de fondo para placeholders de imagen */
+        .image-placeholder {
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans selection:bg-uceBlue selection:text-white" x-data="{ 
+    currentSection: 'inicio',
+    mobileMenu: false,
+    etapas: [
+        { id: 1, titulo: 'Etapa 1', desc: 'Generación de Datos Sintéticos' },
+        { id: 2, titulo: 'Etapa 2', desc: 'Limpieza y QA/QC' },
+        { id: 3, titulo: 'Etapa 3', desc: 'Análisis Exploratorio' },
+        { id: 4, titulo: 'Etapa 4', desc: 'Modelado Variográfico' },
+        { id: 5, titulo: 'Etapa 5', desc: 'Arquitectura de Red' },
+        { id: 6, titulo: 'Etapa 6', desc: 'Entrenamiento IA' },
+        { id: 7, titulo: 'Etapa 7', desc: 'Validación Cruzada' },
+        { id: 8, titulo: 'Etapa 8', desc: 'Reporte de Recursos' }
+    ],
+    herramientas: [
+        { nombre: 'Google Gemini', desc: 'Generación de datos sintéticos y asistencia en código.', icono: 'sparkles' },
+        { nombre: 'ChatGPT', desc: 'Revisión y corrección de prompts arquitectónicos.', icono: 'message-square' },
+        { nombre: 'Copilot', desc: 'Soporte técnico y depuración de lógica.', icono: 'command' },
+        { nombre: 'Google Colab', desc: 'Entorno para ejecución de código en la nube.', icono: 'terminal' },
+        { nombre: 'Recmin', desc: 'Software de minería para validación y visualización.', icono: 'layers' }
+    ],
+    init() {
+        lucide.createIcons();
+    }
+}">
+
+    <div class="min-h-screen flex flex-col h-screen overflow-hidden">
+        
+        <!-- Header Superior -->
+        <header class="bg-uceBlue text-white shadow-lg shrink-0 z-50">
+            <div class="max-w-full mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white p-1 rounded-md shrink-0">
+                        <div class="text-uceBlue font-bold text-[10px] md:text-sm px-1.5 md:px-2">UCE</div>
+                    </div>
+                    <h1 class="font-bold text-sm md:text-base tracking-tight truncate max-w-[150px] xs:max-w-[200px] md:max-w-none">
+                        GeoMinería IA
+                    </h1>
+                </div>
+                
+                <div class="flex items-center space-x-1 md:space-x-2">
+                    <button @click="currentSection = 'inicio'" class="p-2 md:px-3 md:py-2 rounded-lg hover:bg-white/10 transition text-[10px] md:text-sm flex items-center gap-2" :class="currentSection === 'inicio' ? 'bg-white/20' : ''">
+                        <i data-lucide="home" class="w-4 h-4"></i> <span class="hidden sm:inline">Inicio</span>
+                    </button>
+                    <button @click="currentSection = 'herramientas'" class="p-2 md:px-3 md:py-2 rounded-lg hover:bg-white/10 transition text-[10px] md:text-sm flex items-center gap-2" :class="currentSection === 'herramientas' ? 'bg-white/20' : ''">
+                        <i data-lucide="wrench" class="w-4 h-4"></i> <span class="hidden sm:inline">Herramientas</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden relative">
+            <!-- Sidebar Desktop -->
+            <aside class="hidden lg:flex w-72 bg-white border-r border-slate-200 flex-col overflow-y-auto">
+                <div class="p-6">
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Etapas del Proyecto</h2>
+                    <nav class="space-y-1">
+                        <template x-for="etapa in etapas" :key="etapa.id">
+                            <button 
+                                @click="currentSection = 'etapa' + etapa.id"
+                                :class="currentSection === 'etapa' + etapa.id ? 'sidebar-item-active' : 'text-slate-600 hover:bg-slate-50'"
+                                class="w-full flex flex-col items-start px-4 py-3 rounded-r-xl transition-all group text-left">
+                                <span class="text-sm font-bold" x-text="etapa.titulo"></span>
+                                <span class="text-[10px] opacity-70 group-hover:opacity-100" x-text="etapa.desc"></span>
+                            </button>
+                        </template>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- Contenedor Principal -->
+            <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 safe-area-bottom">
+                
+                <!-- SECCIÓN: INICIO -->
+                <div x-show="currentSection === 'inicio'" x-cloak x-transition class="max-w-4xl mx-auto space-y-8 md:space-y-12">
+                    <!-- Banner Visual -->
+                    <div class="relative bg-uceBlue rounded-2xl md:rounded-3xl p-6 md:p-12 text-white overflow-hidden shadow-xl">
+                        <div class="relative z-10">
+                            <h2 class="text-2xl md:text-4xl font-black mb-3 leading-tight">Módulo de Geoestadística Generativa</h2>
+                            <p class="text-blue-100 text-sm md:text-lg max-w-xl italic">Potenciando la Ingeniería de Minas con Inteligencia Artificial.</p>
+                        </div>
+                        <i data-lucide="database" class="absolute -bottom-6 -right-6 w-32 h-32 md:w-64 md:h-64 text-white/5 rotate-12"></i>
+                    </div>
+
+                    <!-- Introducción y Quiénes Somos -->
+                    <div class="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-uceBlue font-black uppercase text-xs mb-6 tracking-widest flex items-center gap-2">
+                            <i data-lucide="info" class="w-4 h-4 text-orange-400"></i> Quiénes Somos / Introducción
+                        </h3>
+                        <p class="text-slate-600 text-sm md:text-base leading-relaxed text-justify">
+                            Somos estudiantes de Ingeniería en Minas enfocados en la caracterización del subsuelo y la estimación de recursos minerales mediante el uso de datos sintéticos, integrando geoestadística, análisis de datos e inteligencia artificial, a través de esta plataforma compartimos metodologías, procesos y herramientas aplicadas con fines académicos, contribuyendo al aprendizaje colaborativo y al desarrollo de soluciones en geología aplicada.
+                        </p>
+                    </div>
+
+                    <!-- Misión y Visión -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                            <h3 class="text-uceBlue font-black uppercase text-xs mb-6 tracking-widest flex items-center gap-2">
+                                <i data-lucide="target" class="w-4 h-4 text-orange-400"></i> Misión
+                            </h3>
+                            <p class="text-slate-600 text-xs md:text-sm leading-relaxed text-justify flex-1">
+                                Diseñar e implementar un entorno integrado de modelización minera que combine datos sintéticos, geoestadística e inteligencia artificial para representar de manera confiable los sistemas geológicos, orientado a la automatización de los procesos de análisis, estimación de recursos y soporte a la toma de decisiones, especialmente en contextos donde la información disponible es limitada o presenta alta incertidumbre.
+                            </p>
+                        </div>
+                        <div class="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                            <h3 class="text-uceBlue font-black uppercase text-xs mb-6 tracking-widest flex items-center gap-2">
+                                <i data-lucide="eye" class="w-4 h-4 text-orange-400"></i> Visión
+                            </h3>
+                            <p class="text-slate-600 text-xs md:text-sm leading-relaxed text-justify flex-1">
+                                Consolidar una plataforma automatizada capaz de generar, procesar e interpretar datos geológicos sintéticos para la construcción de modelos predictivos robustos, que optimicen los flujos de trabajo en la estimación de recursos minerales y sirvan como base para el desarrollo de metodologías innovadoras aplicables en escenarios reales con restricciones de información.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: ETAPA 1 -->
+                <div x-show="currentSection === 'etapa1'" x-cloak x-transition class="max-w-4xl mx-auto space-y-6">
+                    <div class="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="gradient-uce p-6 md:p-10 text-white flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl md:text-4xl font-black uppercase">Etapa 1</h2>
+                                <p class="text-blue-100 text-xs md:text-lg opacity-80">Generación de Datos Sintéticos</p>
+                            </div>
+                            <div class="text-4xl md:text-7xl font-black opacity-20">01</div>
+                        </div>
+                        
+                        <div class="p-6 md:p-10 space-y-8">
+                            <section class="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                                <h3 class="text-uceBlue font-bold text-lg mb-3 flex items-center gap-2">
+                                    <i data-lucide="file-text" class="w-5 h-5"></i> Metodología Aplicada
+                                </h3>
+                                <p class="text-slate-600 text-sm md:text-base text-justify leading-relaxed">
+                                    Implementamos un flujo de trabajo iterativo utilizando **Gemini, ChatGPT y Copilot** para el diseño y refinamiento de instrucciones orientadas a un generador de prompts especializado. Mediante este sistema, desarrollamos un algoritmo de generación de datos sintéticos integrado con el motor de **Google Earth Engine** para obtener elevaciones reales de collares. Finalmente, los resultados fueron exportados y validados en el software **RecMin** para su posterior análisis geológico.
+                                </p>
+                            </section>
+
+                            <section class="space-y-4">
+                                <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Diagrama de Flujo del Proceso</h4>
+                                <div class="w-full aspect-video rounded-2xl border-2 border-dashed border-slate-200 image-placeholder flex flex-col items-center justify-center p-6 text-center">
+                                    <i data-lucide="image" class="w-8 h-8 text-slate-300 mb-2"></i>
+                                    <p class="text-xs font-medium text-slate-500">Insertar aquí: <code class="bg-slate-100 px-1 rounded text-uceBlue">diagrama_generacion_datos.png</code></p>
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 border-t border-slate-100 flex justify-end">
+                            <button @click="currentSection = 'etapa2'" class="text-[10px] font-bold text-uceBlue uppercase flex items-center gap-1 bg-white px-4 py-2 rounded-lg border shadow-sm transition-all hover:bg-uceBlue hover:text-white">
+                                Siguiente Etapa <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: ETAPA 2 -->
+                <div x-show="currentSection === 'etapa2'" x-cloak x-transition class="max-w-4xl mx-auto space-y-6">
+                    <div class="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="gradient-uce p-6 md:p-10 text-white flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl md:text-4xl font-black uppercase">Etapa 2</h2>
+                                <p class="text-blue-100 text-xs md:text-lg opacity-80">Limpieza y QA/QC de Datos</p>
+                            </div>
+                            <div class="text-4xl md:text-7xl font-black opacity-20">02</div>
+                        </div>
+                        
+                        <div class="p-6 md:p-10 space-y-8 text-center py-20">
+                            <i data-lucide="shield-check" class="w-16 h-16 text-slate-200 mx-auto mb-4"></i>
+                            <h3 class="text-slate-400 font-bold">Contenido de Limpieza en preparación...</h3>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 border-t border-slate-100 flex justify-between">
+                            <button @click="currentSection = 'etapa1'" class="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 bg-white px-4 py-2 rounded-lg border shadow-sm">
+                                <i data-lucide="chevron-left" class="w-3 h-3"></i> Anterior
+                            </button>
+                            <button @click="currentSection = 'etapa3'" class="text-[10px] font-bold text-uceBlue uppercase flex items-center gap-1 bg-white px-4 py-2 rounded-lg border shadow-sm">
+                                Siguiente <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: HERRAMIENTAS -->
+                <div x-show="currentSection === 'herramientas'" x-cloak x-transition class="max-w-4xl mx-auto space-y-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-800 p-8 text-white">
+                            <h2 class="text-2xl font-black uppercase">Ecosistema Tecnológico</h2>
+                        </div>
+                        <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="tool in herramientas" :key="tool.nombre">
+                                <div class="p-4 border rounded-xl flex items-start gap-4 transition-colors hover:bg-slate-50">
+                                    <i :data-lucide="tool.icono" class="w-6 h-6 text-uceBlue mt-1"></i>
+                                    <div>
+                                        <h4 class="font-bold text-sm" x-text="tool.nombre"></h4>
+                                        <p class="text-xs text-slate-500" x-text="tool.desc"></p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OTRAS ETAPAS (PLANTILLAS DINÁMICAS) -->
+                <template x-for="etapa in etapas.filter(e => e.id > 2)" :key="etapa.id">
+                    <div x-show="currentSection === 'etapa' + etapa.id" x-cloak x-transition class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-20 text-center">
+                            <i data-lucide="construction" class="w-12 h-12 text-slate-200 mx-auto mb-4"></i>
+                            <h2 class="text-xl font-bold text-slate-400" x-text="etapa.titulo"></h2>
+                            <p class="text-slate-400 text-sm mt-2" x-text="etapa.desc"></p>
+                        </div>
+                    </div>
+                </template>
+
+            </main>
+        </div>
+
+        <!-- Barra de Navegación Mobile -->
+        <nav class="lg:hidden bg-white border-t border-slate-200 grid grid-cols-3 h-16 shrink-0 z-50">
+            <button @click="currentSection = 'inicio'" class="flex flex-col items-center justify-center" :class="currentSection === 'inicio' ? 'text-uceBlue' : 'text-slate-400'">
+                <i data-lucide="home" class="w-5 h-5"></i>
+                <span class="text-[9px] mt-1">Inicio</span>
+            </button>
+            <button @click="currentSection = 'herramientas'" class="flex flex-col items-center justify-center" :class="currentSection === 'herramientas' ? 'text-uceBlue' : 'text-slate-400'">
+                <i data-lucide="wrench" class="w-5 h-5"></i>
+                <span class="text-[9px] mt-1">Tools</span>
+            </button>
+            <button @click="mobileMenu = true" class="bg-uceBlue text-white flex items-center justify-center gap-2">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                <span class="text-[10px] font-bold uppercase">Etapas</span>
+            </button>
+        </nav>
+
+        <!-- Panel Desplegable (Drawer) para Mobile -->
+        <div x-show="mobileMenu" x-cloak class="fixed inset-0 z-[100] lg:hidden">
+            <div @click="mobileMenu = false" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+            <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 shadow-2xl max-h-[80vh] flex flex-col">
+                <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 shrink-0"></div>
+                <h3 class="text-center font-black text-slate-800 uppercase text-sm mb-4">Seleccionar Etapa</h3>
+                
+                <div class="overflow-y-auto space-y-2 pb-10">
+                    <template x-for="etapa in etapas" :key="etapa.id">
+                        <button @click="currentSection = 'etapa' + etapa.id; mobileMenu = false" 
+                                class="w-full p-4 rounded-xl text-left border transition-all active:scale-[0.98]" 
+                                :class="currentSection === 'etapa' + etapa.id ? 'bg-blue-50 border-uceBlue text-uceBlue ring-2 ring-uceBlue/10' : 'bg-slate-50 border-slate-100 text-slate-600'">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-black block" x-text="etapa.titulo"></span>
+                                    <span class="text-[10px] opacity-70 block" x-text="etapa.desc"></span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-4 h-4 opacity-30"></i>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Inicialización de iconos Lucide tras la carga del DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
