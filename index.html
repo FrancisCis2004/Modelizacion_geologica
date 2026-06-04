@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis Estadístico de Sondajes - Explorador de Campañas</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para gráficos de alto rendimiento -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS para parsear archivos Excel reales (.xlsx / .xls) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Modal de Notificación Personalizado -->
+  <div id="custom-alert-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-slate-950 border border-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center gap-3 text-amber-500 mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <h3 class="text-lg font-bold text-white" id="modal-alert-title">Notificación</h3>
+      </div>
+      <p class="text-sm text-slate-300 mb-6" id="modal-alert-message">Mensaje de alerta.</p>
+      <div class="flex justify-end">
+        <button onclick="closeAlertModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-lg text-sm transition-all">
+          Aceptar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Principal -->
+  <header class="bg-slate-950 border-b border-slate-800 shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-amber-500 rounded-lg text-slate-950 font-black text-xl tracking-wider">Z</div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white">ZARANDAJAS ANALYTICS</h1>
+          <p class="text-xs text-amber-500 font-mono tracking-widest">MINING DATA SCIENCE PLATFORM</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" id="status-badge">
+          Esperando Archivos...
+        </span>
+        <button id="btn-reset" class="hidden text-xs font-bold bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 border border-rose-500/30 px-3 py-1.5 rounded-md transition-all" onclick="resetApp()">
+          Cargar Nuevos Datos
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- PANTALLA DE CARGA DE ARCHIVOS -->
+  <div id="upload-screen" class="flex-grow flex items-center justify-center p-4">
+    <div class="max-w-4xl w-full bg-slate-950/50 backdrop-blur-md rounded-2xl border border-slate-800 p-8 shadow-2xl">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-white mb-2">Carga de Base de Datos del Proyecto</h2>
+        <p class="text-sm text-slate-400">Sube la tabla de variables (Excel estándar) y los archivos tabulados (.txt) para inicializar el motor de analítica geomecánica, estructural e hidrotermal en partes por billón (ppb).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <!-- 1. Tabla de Variables (Excel / CSV) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-amber-500/40 transition-all flex flex-col justify-between" id="card-variables">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-white text-sm">1. Variables de Interés</h3>
+                <p class="text-xs text-slate-400">Excel estándar (.xlsx, .xls, .csv)</p>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="file-variables" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 cursor-pointer" onchange="markFileStatus('variables')">
+        </div>
+
+        <!-- 2. Collar de Sondaje (txt) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-500/40 transition-all flex flex-col justify-between" id="card-collar">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-white text-sm">2. Collar (Collar_*.txt)</h3>
+                <p class="text-xs text-slate-400">Coordenadas X/Y/Z tabuladas</p>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="file-collar" accept=".txt" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 cursor-pointer" onchange="markFileStatus('collar')">
+        </div>
+
+        <!-- 3. Ensayos (Assay) (txt) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-emerald-500/40 transition-all flex flex-col justify-between" id="card-assay">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-white text-sm">3. Ensayos (Assay_*.txt)</h3>
+                <p class="text-xs text-slate-400">Leyes transformadas a ppb</p>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="file-assay" accept=".txt" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 cursor-pointer" onchange="markFileStatus('assay')">
+        </div>
+
+        <!-- 4. Trayectoria (Survey) (txt) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-cyan-500/40 transition-all flex flex-col justify-between" id="card-survey">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="p-2 bg-cyan-500/10 text-cyan-400 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-white text-sm">4. Trayectoria (Survey_*.txt)</h3>
+                <p class="text-xs text-slate-400">Azimut e Inclinación por tramo</p>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="file-survey" accept=".txt" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 cursor-pointer" onchange="markFileStatus('survey')">
+        </div>
+
+        <!-- 5. Litología (txt) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-purple-500/40 transition-all flex flex-col justify-between" id="card-lito">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-white text-sm">5. Litología & Alteración</h3>
+                <p class="text-xs text-slate-400">Unidades y tramos de roca</p>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="file-lito" accept=".txt" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 cursor-pointer" onchange="markFileStatus('lito')">
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center">
+        <button onclick="processUploadedData()" class="w-full sm:w-64 bg-amber-500 text-slate-950 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-amber-400 active:scale-95 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Procesar Datos
+        </button>
+        <p class="text-[11px] text-slate-500 mt-3">Procesamiento 100% en local. Excel de variables parseado en memoria sin servidores externos.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA PRINCIPAL DE ANALÍTICA (Oculta al inicio) -->
+  <main id="analytica-screen" class="hidden flex-grow max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 w-full">
+
+    <!-- SECCIÓN 1: RESUMEN OPERACIONAL GENERAL -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-white mb-5 pb-2 border-b border-slate-800 flex items-center gap-2">
+        <span class="w-2.5 h-6 bg-amber-500 rounded-sm"></span>
+        SECCIÓN 1: Resumen Operacional General
+      </h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Tarjeta 1 -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sondajes Únicos Perforados</p>
+            <h3 id="stat-sondajes" class="text-3xl font-bold text-white mt-2">0</h3>
+            <p class="text-xs text-slate-500 mt-1">Total de collares mapped</p>
+          </div>
+          <div class="p-4 bg-slate-900 rounded-lg text-amber-500">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          </div>
+        </div>
+
+        <!-- Tarjeta 2 -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Metraje Acumulado Total</p>
+            <h3 id="stat-metraje" class="text-3xl font-bold text-white mt-2">0.00 m</h3>
+            <p class="text-xs text-slate-500 mt-1">Suma total de profundidad</p>
+          </div>
+          <div class="p-4 bg-slate-900 rounded-lg text-emerald-500">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+          </div>
+        </div>
+
+        <!-- Tarjeta 3 -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Muestras / Intervalos Ensayados</p>
+            <h3 id="stat-muestras" class="text-3xl font-bold text-white mt-2">0</h3>
+            <p class="text-xs text-slate-500 mt-1">Registros de ensayos químicos</p>
+          </div>
+          <div class="p-4 bg-slate-900 rounded-lg text-blue-500">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: ANÁLISIS ESTADÍSTICO DE VARIABLES QUÍMICAS (LEYES MINERALES) -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-white mb-5 pb-2 border-b border-slate-800 flex items-center gap-2">
+        <span class="w-2.5 h-6 bg-amber-500 rounded-sm"></span>
+        SECCIÓN 2: Análisis Estadístico de Variables Químicas (Leyes en partes por billón - ppb)
+      </h2>
+
+      <!-- Selector de Elementos dinámico -->
+      <div id="chem-selector" class="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+        <!-- Generado dinámicamente -->
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Indicadores & Outliers -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-slate-800">
+              Estadísticos Descriptivos (<span class="text-amber-500 font-mono font-bold" id="desc-chem-title">Elemento</span> - ppb)
+            </h3>
+            <div class="space-y-3 font-medium text-slate-300">
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Cantidad de muestras</span><span id="c-stat-cant" class="text-white">0</span></div>
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Mínimo (ppb)</span><span id="c-stat-min" class="text-white">0</span></div>
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Máximo (ppb)</span><span id="c-stat-max" class="text-white">0</span></div>
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Media (ppb)</span><span id="c-stat-mean" class="text-white">0</span></div>
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Mediana Q2 (ppb)</span><span id="c-stat-med" class="text-white">0</span></div>
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Desviación Estándar</span><span id="c-stat-std" class="text-white">0</span></div>
+              <div class="flex justify-between py-1 border-b border-slate-900"><span class="text-slate-500">Primer Cuartil Q1 (ppb)</span><span id="c-stat-q1" class="text-white">0</span></div>
+              <div class="flex justify-between py-1"><span class="text-slate-500">Tercer Cuartil Q3 (ppb)</span><span id="c-stat-q3" class="text-white">0</span></div>
+            </div>
+          </div>
+
+          <!-- Módulo de Cuantificación de Outliers (Requerido) -->
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5 border-l-4 border-l-rose-500">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              Cuantificación de Outliers (IQR)
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Valores extremos fuera de $[Q1 - 1.5IQR, Q3 + 1.5IQR]$</p>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800 text-center">
+                <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Cantidad</span>
+                <span id="outlier-count-val" class="text-xl font-black text-rose-400">0</span>
+              </div>
+              <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800 text-center">
+                <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Porcentaje (%)</span>
+                <span id="outlier-percent-val" class="text-xl font-black text-rose-400">0.0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla y Gráficos (3 Histogramas en ppb + Boxplot con ticks de escala X) -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+          <!-- Histograma 1: General (Sobre los otros dos) -->
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4">1. Histograma General de Distribución (Unidad: ppb)</h3>
+            <div class="h-64 w-full relative">
+              <canvas id="chemChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Dos histogramas de apoyo en cuadrícula paralela (Comunes y Outliers) (ID agregado para control dinámico) -->
+          <div id="support-histograms-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-950 rounded-xl border border-slate-800 p-5" id="card-common-hist">
+              <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                2. Histograma de Valores Comunes (ppb)
+              </h3>
+              <div class="h-56 w-full relative">
+                <canvas id="chemChartCommon"></canvas>
+              </div>
+            </div>
+            <div class="bg-slate-950 rounded-xl border border-slate-800 p-5" id="card-outliers-hist">
+              <h3 class="text-sm font-bold text-rose-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                3. Histograma de Outliers (ppb)
+              </h3>
+              <div class="h-56 w-full relative">
+                <canvas id="chemChartOutliers"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico de Boxplot Horizontal Personalizado con Eje X visible y Eje Y vacío (ID agregado para control dinámico) -->
+          <div id="card-boxplot" class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Boxplot Horizontal de Leyes (Eje X: Concentración en ppb)</h3>
+              <span class="text-xs font-mono text-slate-400" id="boxplot-limits-info">Lim: [0, 0]</span>
+            </div>
+            <div class="bg-slate-900/50 rounded-xl border border-slate-800/80 p-5 relative h-48 flex flex-col justify-center">
+              <canvas id="boxplotCanvas" class="w-full h-36"></canvas>
+            </div>
+          </div>
+
+          <!-- Tabla de Distribución de Leyes -->
+          <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Tabla de Distribución de Leyes (ppb)</h3>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="min-w-full divide-y divide-slate-800 text-sm">
+                <thead class="bg-slate-900/50 font-bold text-slate-300">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left">Rango de Ley (ppb)</th>
+                    <th scope="col" class="px-6 py-3 text-right">Cantidad de Ensayos</th>
+                    <th scope="col" class="px-6 py-3 text-right">Porcentaje (%)</th>
+                    <th scope="col" class="px-6 py-3 text-right">Porcentaje Acumulado (%)</th>
+                  </tr>
+                </thead>
+                <tbody id="chem-table-body" class="divide-y divide-slate-800 text-slate-300 font-medium">
+                  <!-- Llenado dinámico -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 3: ANÁLISIS GEOLÓGICO -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-white mb-5 pb-2 border-b border-slate-800 flex items-center gap-2">
+        <span class="w-2.5 h-6 bg-emerald-500 rounded-sm"></span>
+        SECCIÓN 3: Análisis Geológico (Variable Cualitativa Nominal)
+      </h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Tabla de Distribución -->
+        <div class="lg:col-span-6 flex flex-col gap-6">
+          <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Distribución por Tipo de Litología y Alteración</h3>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="min-w-full divide-y divide-slate-800 text-sm">
+                <thead class="bg-slate-900/50 font-bold text-slate-300">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left">Tipo de Litología / Alteración</th>
+                    <th scope="col" class="px-6 py-3 text-right">Cantidad de Tramos</th>
+                    <th scope="col" class="px-6 py-3 text-right">Porcentaje (%)</th>
+                  </tr>
+                </thead>
+                <tbody id="lito-table-body" class="divide-y divide-slate-800 text-slate-300 font-medium">
+                  <!-- Llenado dinámico -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfico e Interpretación -->
+        <div class="lg:col-span-6 flex flex-col gap-6">
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Composición Litológica del Yacimiento</h3>
+            <div class="h-64 w-full relative">
+              <canvas id="litoChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Interpretación Geológica del Entorno</h3>
+            <p id="lito-interpretation" class="text-sm text-slate-400 leading-relaxed">
+              Carga los datos para visualizar la interpretación geoquímica y estructural automática de la roca predominante.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 4: ANÁLISIS DE VARIABLES ESPACIALES / GEOGRÁFICAS -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-white mb-5 pb-2 border-b border-slate-800 flex items-center gap-2">
+        <span class="w-2.5 h-6 bg-blue-500 rounded-sm"></span>
+        SECCIÓN 4: Análisis de Variables Espaciales / Geográficas (Collares & Trayectorias)
+      </h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Estadísticos Descriptivos de Posición y Survey -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+          <!-- Coordenadas -->
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-slate-800">Ubicación Espacial de Collares</h3>
+            
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Eje Este (X) - m</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs font-medium bg-slate-900/50 p-2.5 rounded-lg border border-slate-800">
+                  <div>Mínimo: <span id="collar-min-x" class="font-bold text-white">0.0 m</span></div>
+                  <div>Máximo: <span id="collar-max-x" class="font-bold text-white">0.0 m</span></div>
+                  <div class="col-span-2 mt-1 pt-1 border-t border-slate-800">Media: <span id="collar-mean-x" class="font-bold text-white">0.0 m</span></div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Eje Norte (Y) - m</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs font-medium bg-slate-900/50 p-2.5 rounded-lg border border-slate-800">
+                  <div>Mínimo: <span id="collar-min-y" class="font-bold text-white">0.0 m</span></div>
+                  <div>Máximo: <span id="collar-max-y" class="font-bold text-white">0.0 m</span></div>
+                  <div class="col-span-2 mt-1 pt-1 border-t border-slate-800">Media: <span id="collar-mean-y" class="font-bold text-white">0.0 m</span></div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Elevación (Z) - m.s.n.m.</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs font-medium bg-slate-900/50 p-2.5 rounded-lg border border-slate-800">
+                  <div>Mínimo: <span id="collar-min-z" class="font-bold text-white">0.0 m</span></div>
+                  <div>Máximo: <span id="collar-max-z" class="font-bold text-white">0.0 m</span></div>
+                  <div class="col-span-2 mt-1 pt-1 border-t border-slate-800">Media: <span id="collar-mean-z" class="font-bold text-white">0.0 m</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Módulo Analítico del Survey -->
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-slate-800">Análisis Direccional (Survey)</h3>
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Inclinación Promedio (Inclinación / Dip)</h4>
+                <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800 flex justify-between items-center text-sm font-medium">
+                  <span class="text-slate-500">Dip Promedio:</span>
+                  <span id="survey-avg-dip" class="font-bold text-cyan-400">-74.5°</span>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Orientación Promedio (Azimut)</h4>
+                <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800 flex justify-between items-center text-sm font-medium">
+                  <span class="text-slate-500">Azimut Promedio:</span>
+                  <span id="survey-avg-azimuth" class="font-bold text-cyan-400">183.5°</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distribución y Vista Espacial -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+          <div class="bg-slate-950 rounded-xl border border-slate-800 p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Mapa de Dispersión Planimétrica de Collares (Vista de Planta X/Y Real)</h3>
+            <div class="h-80 w-full relative">
+              <canvas id="spatialChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Agrupación de Collares por Rango de Cota (Elevación Z)</h3>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="min-w-full divide-y divide-slate-800 text-sm">
+                <thead class="bg-slate-900/50 font-bold text-slate-300">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left">Bloque de Elevación (m.s.n.m.)</th>
+                    <th scope="col" class="px-6 py-3 text-right">Cantidad de Collares</th>
+                    <th scope="col" class="px-6 py-3 text-right">Porcentaje (%)</th>
+                  </tr>
+                </thead>
+                <tbody id="collar-z-table" class="divide-y divide-slate-800 text-slate-300 font-medium">
+                  <!-- Llenado dinámico -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 5: ANÁLISIS DE VARIABLES OPERACIONALES -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-white mb-5 pb-2 border-b border-slate-800 flex items-center gap-2">
+        <span class="w-2.5 h-6 bg-purple-600 rounded-sm"></span>
+        SECCIÓN 5: Análisis de Variables Operacionales de Perforación
+      </h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Indicadores Fundamentales -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+          <div class="bg-white/0 border border-slate-800 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-slate-800">Estadísticas de Tramo ("Desde" y "Hasta")</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                <span class="text-xs font-bold text-slate-400 uppercase">Variable "Desde"</span>
+                <div class="mt-2 space-y-1 text-sm font-medium">
+                  <div>Mín: <span id="op-desde-min" class="font-bold text-white">0.00 m</span></div>
+                  <div>Máx: <span id="op-desde-max" class="font-bold text-white">0.00 m</span></div>
+                  <div class="border-t border-slate-800 pt-1 mt-1 text-xs">Media: <span id="op-desde-mean" class="font-bold text-white">0.00 m</span></div>
+                </div>
+              </div>
+              <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                <span class="text-xs font-bold text-slate-400 uppercase">Variable "Hasta"</span>
+                <div class="mt-2 space-y-1 text-sm font-medium">
+                  <div>Mín: <span id="op-hasta-min" class="font-bold text-white">0.00 m</span></div>
+                  <div>Máx: <span id="op-hasta-max" class="font-bold text-white">0.00 m</span></div>
+                  <div class="border-t border-slate-800 pt-1 mt-1 text-xs">Media: <span id="op-hasta-mean" class="font-bold text-white">0.00 m</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20 text-amber-400 text-xs leading-relaxed" id="op-avg-interval-text">
+              <strong>Nota Técnica:</strong> Carga los tramos del ensayo para calcular el soporte longitudinal promedio de los testigos.
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 overflow-hidden rounded-xl">
+            <div class="px-5 py-4 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Agrupación de Muestreo según Profundidad de Ensayo</h3>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="min-w-full divide-y divide-slate-800 text-sm">
+                <thead class="bg-slate-900/50 font-bold text-slate-300">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left">Intervalo de Profundidad (Hasta)</th>
+                    <th scope="col" class="px-6 py-3 text-right">Cantidad de Ensayos</th>
+                    <th scope="col" class="px-6 py-3 text-right">Porcentaje (%)</th>
+                  </tr>
+                </thead>
+                <tbody id="op-table-body" class="divide-y divide-slate-800 text-slate-300 font-medium">
+                  <!-- Llenado dinámico -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfico del Avance / Soporte de Longitudes -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Avance Acumulado del Avance y Distribución de Soporte</h3>
+            <div class="h-80 w-full relative">
+              <canvas id="opChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer Corporativo -->
+  <footer class="bg-slate-950 text-slate-500 py-6 border-t border-slate-900 text-center text-xs mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="font-mono">GEOLOGICAL ANALYSIS SYSTEM &copy; 2026</p>
+      <p class="mt-1">Procesador local interactivo de bases de datos de sondajes estructurados por tabulación y Excel estándar.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Variables globales para persistir la data cargada
+    let rawVariables = null;
+    let rawCollar = null;
+    let rawAssay = null;
+    let rawSurvey = null;
+    let rawLito = null;
+
+    // Instancias de ChartJS
+    let chemChartInstance = null;
+    let chemChartCommonInstance = null;
+    let chemChartOutliersInstance = null;
+    let litoChartInstance = null;
+    let spatialChartInstance = null;
+    let opChartInstance = null;
+
+    let activeChemicalElement = 'Au';
+    let processedChemicals = {};
+
+    // Función auxiliar para leer archivos de texto plano
+    function readFileAsync(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
+
+    // Función para leer archivos de Excel (.xlsx, .xls) con SheetJS
+    function readExcelAsync(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            resolve(jsonData);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Modal de Alerta
+    function showCustomAlert(title, message) {
+      document.getElementById('modal-alert-title').innerText = title;
+      document.getElementById('modal-alert-message').innerText = message;
+      document.getElementById('custom-alert-modal').classList.remove('hidden');
+    }
+
+    // Cierre del modal de alerta
+    function closeAlertModal() {
+      document.getElementById('custom-alert-modal').classList.add('hidden');
+    }
+
+    // Estilo visual temporal al seleccionar archivos en la carga
+    function markFileStatus(type) {
+      const card = document.getElementById(`card-${type}`);
+      if (card) {
+        card.classList.remove('border-slate-800');
+        card.classList.add('border-emerald-500/50', 'bg-slate-900/80');
+      }
+    }
+
+    // Al resetear la app volvemos al panel de carga y restauramos bordes
+    function resetApp() {
+      document.getElementById('upload-screen').classList.remove('hidden');
+      document.getElementById('analytica-screen').classList.add('hidden');
+      document.getElementById('btn-reset').classList.add('hidden');
+      document.getElementById('status-badge').innerText = "Esperando Archivos...";
+      document.getElementById('status-badge').className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      
+      // Limpiar inputs
+      document.getElementById('file-variables').value = "";
+      document.getElementById('file-collar').value = "";
+      document.getElementById('file-assay').value = "";
+      document.getElementById('file-survey').value = "";
+      document.getElementById('file-lito').value = "";
+
+      // Resetear bordes de tarjetas
+      ['variables', 'collar', 'assay', 'survey', 'lito'].forEach(type => {
+        const card = document.getElementById(`card-${type}`);
+        if (card) {
+          card.className = "bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-amber-500/40 transition-all flex flex-col justify-between";
+        }
+      });
+    }
+
+    // Procesar la carga de archivos cargados en tiempo real
+    async function processUploadedData() {
+      const varFile = document.getElementById('file-variables').files[0];
+      const collarFile = document.getElementById('file-collar').files[0];
+      const assayFile = document.getElementById('file-assay').files[0];
+      const surveyFile = document.getElementById('file-survey').files[0];
+      const litoFile = document.getElementById('file-lito').files[0];
+
+      if (!varFile || !collarFile || !assayFile || !surveyFile || !litoFile) {
+        showCustomAlert("Archivos faltantes", "Por favor, asegúrate de subir los 5 archivos requeridos para realizar el procesamiento analítico completo.");
+        return;
+      }
+
+      try {
+        document.getElementById('status-badge').innerText = "Procesando...";
+        document.getElementById('status-badge').className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-emerald-500/20";
+
+        // Carga dinámica de Excel (utilizando SheetJS) y TXTs (con TSV parser)
+        rawVariables = await readExcelAsync(varFile);
+        rawCollar = parseTSV(await readFileAsync(collarFile));
+        rawAssay = parseTSV(await readFileAsync(assayFile));
+        rawSurvey = parseTSV(await readFileAsync(surveyFile));
+        rawLito = parseTSV(await readFileAsync(litoFile));
+
+        // Validación estructural de datos cargados
+        if (rawCollar.length === 0 || rawAssay.length === 0 || rawSurvey.length === 0 || rawLito.length === 0) {
+          throw new Error("Uno o más archivos de texto están vacíos o no tienen la separación correcta por tabulador.");
+        }
+
+        // Ejecutar procesamiento analítico y renderizado geológico de datos reales
+        renderResumenGeneral();
+        processChemicalVariables();
+        processGeologicalData();
+        processSpatialData();
+        processSurveyData(); 
+        processOperationalData();
+
+        // Mostrar panel principal
+        document.getElementById('upload-screen').classList.add('hidden');
+        document.getElementById('analytica-screen').classList.remove('hidden');
+        document.getElementById('btn-reset').classList.remove('hidden');
+        document.getElementById('status-badge').innerText = "Campaña Activa";
+        document.getElementById('status-badge').className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+
+      } catch (err) {
+        showCustomAlert("Error de procesamiento", "Ocurrió un error al procesar la información cargada: " + err.message);
+        resetApp();
+      }
+    }
+
+    // Parser TSV estándar (Delimitado por Tabuladores)
+    function parseTSV(text) {
+      const lines = text.split(/\r?\n/);
+      if (lines.length === 0) return [];
+      const headers = lines[0].trim().split('\t').map(h => h.toUpperCase());
+      const data = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cells = line.split('\t');
+        const rowObj = {};
+        headers.forEach((h, idx) => {
+          rowObj[h] = cells[idx] ? cells[idx].trim() : '';
+        });
+        data.push(rowObj);
+      }
+      return data;
+    }
+
+    // Algoritmo de Smart Binning para ajustar los intervalos de frecuencia a múltiplos de 5 o 10
+    function calculateSmartBins(valuesArray, numBins, minVal, maxVal) {
+      if (valuesArray.length === 0) {
+        return { labels: [], counts: [] };
+      }
+
+      // Evitar división si los valores son idénticos
+      if (minVal === maxVal || Math.abs(maxVal - minVal) < 1e-7) {
+        return {
+          labels: [`${Math.round(minVal)} ppb`],
+          counts: [valuesArray.length]
+        };
+      }
+
+      // 1. Obtener tamaño aproximado del intervalo
+      let rawStep = (maxVal - minVal) / numBins;
+
+      // 2. Ajustar al múltiplo de 5 o 10 más cercano
+      let smartStep = 5;
+      if (rawStep > 5) {
+        // Encontrar potencia de 10 de referencia
+        const powerOfTen = Math.pow(10, Math.floor(Math.log10(rawStep)));
+        const ratio = rawStep / powerOfTen;
+
+        if (ratio < 1.5) smartStep = 1 * powerOfTen;
+        else if (ratio < 3.5) smartStep = 2 * powerOfTen; // Múltiplo intermedio limpio
+        else if (ratio < 7.5) smartStep = 5 * powerOfTen; // Múltiplo de 5
+        else smartStep = 10 * powerOfTen;                 // Múltiplo de 10
+      } else {
+        // Para intervalos muy pequeños (menores a 5 ppb), redondear al entero o múltiplos de 0.5/1/5
+        smartStep = rawStep < 1 ? 1 : 5;
+      }
+
+      // Asegurar que comience en un múltiplo limpio del tamaño del paso
+      const smartMin = Math.floor(minVal / smartStep) * smartStep;
+      
+      const bins = [];
+      let currentVal = smartMin;
+      
+      // Construir bins hasta que cubran el valor máximo real de los datos
+      while (currentVal < maxVal + 1e-5) {
+        const nextVal = currentVal + smartStep;
+        bins.push({
+          label: `${Math.round(currentVal).toLocaleString()} - ${Math.round(nextVal).toLocaleString()}`,
+          min: currentVal,
+          max: nextVal,
+          count: 0
+        });
+        currentVal = nextVal;
+      }
+
+      // Asignar frecuencias en los bins estructurados
+      valuesArray.forEach(v => {
+        let placed = false;
+        for (let i = 0; i < bins.length; i++) {
+          if (v >= bins[i].min && v < bins[i].max) {
+            bins[i].count++;
+            placed = true;
+            break;
+          }
+        }
+        // Si cae exactamente en el límite exterior final de la escala
+        if (!placed && bins.length > 0 && v >= bins[bins.length - 1].min) {
+          bins[bins.length - 1].count++;
+        }
+      });
+
+      return {
+        labels: bins.map(b => b.label),
+        counts: bins.map(b => b.count)
+      };
+    }
+
+    // SECCIÓN 1: Resumen Operacional General
+    function renderResumenGeneral() {
+      const sondajesUnicos = new Set(rawCollar.map(r => r.SONDAJE || r.SONDEO || Object.values(r)[0]));
+      document.getElementById('stat-sondajes').innerText = sondajesUnicos.size;
+
+      let drillDepths = {};
+      rawAssay.forEach(row => {
+        const sondaje = row.SONDAJE || row.SONDEO || Object.values(row)[0];
+        const hasta = parseFloat(row.HASTA || 0);
+        if (sondaje && !isNaN(hasta)) {
+          if (!drillDepths[sondaje] || hasta > drillDepths[sondaje]) {
+            drillDepths[sondaje] = hasta;
+          }
+        }
+      });
+
+      const totalMetraje = Object.values(drillDepths).reduce((acc, curr) => acc + curr, 0);
+      document.getElementById('stat-metraje').innerText = `${totalMetraje.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} m`;
+      document.getElementById('stat-muestras').innerText = rawAssay.length.toLocaleString();
+    }
+
+    // SECCIÓN 2: Análisis Estadístico de Variables Químicas & Outliers con Conversión a ppb
+    function processChemicalVariables() {
+      const headers = Object.keys(rawAssay[0]);
+      const assayColumns = headers.filter(h => h !== 'SONDAJE' && h !== 'SONDEO' && h !== 'DESDE' && h !== 'HASTA');
+      
+      const selectorContainer = document.getElementById('chem-selector');
+      selectorContainer.innerHTML = '';
+
+      processedChemicals = {};
+
+      assayColumns.forEach((col, idx) => {
+        // Lectura y transformación de leyes dinámicamente a ppb según las especificaciones del yacimiento
+        const values = rawAssay.map(r => {
+          const rawVal = parseFloat(r[col]);
+          if (isNaN(rawVal)) return NaN;
+
+          // Detectar la variable química para aplicar la constante multiplicativa de ppb
+          const upperCol = col.toUpperCase();
+          if (upperCol.includes('AU')) {
+            return rawVal * 1000;         // Oro: g/t -> ppb (multiplicado por 1,000)
+          } else if (upperCol.includes('AG')) {
+            return rawVal * 1000;         // Plata: ppm -> ppb (multiplicado por 1,000)
+          } else if (upperCol.includes('CU')) {
+            return rawVal * 10000000;     // Cobre: % -> ppb (multiplicado por 10,000,000)
+          } else if (upperCol.includes('MO')) {
+            return rawVal * 10000000;     // Molibdeno: % -> ppb (multiplicado por 10,000,000)
+          }
+          return rawVal; // Unidad por defecto si no es reconocida
+        }).filter(v => !isNaN(v));
+
+        if (values.length === 0) return;
+
+        values.sort((a, b) => a - b);
+        const cant = values.length;
+        const min = values[0];
+        const max = values[cant - 1];
+        const sum = values.reduce((acc, curr) => acc + curr, 0);
+        const mean = sum / cant;
+        
+        const getPercentile = (p) => {
+          const index = (cant - 1) * p;
+          const lower = Math.floor(index);
+          const upper = Math.ceil(index);
+          const weight = index - lower;
+          return values[lower] * (1 - weight) + values[upper] * weight;
+        };
+
+        const med = getPercentile(0.5);
+        const q1 = getPercentile(0.25);
+        const q3 = getPercentile(0.75);
+
+        const avgSquareDiff = values.reduce((acc, curr) => acc + Math.pow(curr - mean, 2), 0) / cant;
+        const std = Math.sqrt(avgSquareDiff);
+
+        // Cuantificación de outliers utilizando IQR (Rango Intercuartílico)
+        const iqr = q3 - q1;
+        const safeIqr = Math.max(iqr, 1); 
+
+        const lowerLimit = q1 - 1.5 * safeIqr;
+        const upperLimit = q3 + 1.5 * safeIqr;
+
+        // Separación limpia de valores comunes vs outliers extremos
+        const commonValues = values.filter(v => v >= lowerLimit && v <= upperLimit);
+        const outlierValues = values.filter(v => v < lowerLimit || v > upperLimit);
+
+        const outlierCount = outlierValues.length;
+        const outlierPercent = (outlierCount / cant) * 100;
+
+        // Segmentaciones de Histogramas aplicando Smart Binning en ppb
+        const generalBins = calculateSmartBins(values, 8, min, max);
+
+        const commonMin = commonValues.length > 0 ? commonValues[0] : min;
+        const commonMax = commonValues.length > 0 ? commonValues[commonValues.length - 1] : max;
+        const commonBins = calculateSmartBins(commonValues, 8, commonMin, commonMax);
+
+        const outlierMin = outlierValues.length > 0 ? outlierValues[0] : 0;
+        const outlierMax = outlierValues.length > 0 ? outlierValues[outlierValues.length - 1] : 0;
+        const outlierBins = calculateSmartBins(outlierValues, 6, outlierMin, outlierMax);
+
+        processedChemicals[col] = {
+          stats: {
+            cant: cant.toLocaleString(),
+            min: Math.round(min).toLocaleString(),
+            max: Math.round(max).toLocaleString(),
+            mean: Math.round(mean).toLocaleString(),
+            med: Math.round(med).toLocaleString(),
+            std: Math.round(std).toLocaleString(),
+            q1: Math.round(q1).toLocaleString(),
+            q3: Math.round(q3).toLocaleString(),
+            iqr: Math.round(safeIqr).toLocaleString(),
+            lowerLimit: Math.round(lowerLimit).toLocaleString(),
+            upperLimit: Math.round(upperLimit).toLocaleString()
+          },
+          outliers: {
+            count: outlierCount,
+            percent: outlierPercent.toFixed(2),
+            rawValues: outlierValues
+          },
+          rawSortedValues: values,
+          commonValues: commonValues,
+          bins: {
+            general: generalBins,
+            common: commonBins,
+            outliers: outlierBins
+          },
+          total: cant,
+          color: idx % 4 === 0 ? 'rgba(245, 158, 11, 0.85)' : idx % 4 === 1 ? 'rgba(16, 185, 129, 0.85)' : idx % 4 === 2 ? 'rgba(139, 92, 246, 0.85)' : 'rgba(100, 116, 139, 0.85)'
+        };
+
+        const btn = document.createElement('button');
+        btn.id = `btn-chem-${col}`;
+        btn.onclick = () => selectChemicalElement(col);
+        btn.innerText = `${col} (ppb)`;
+        btn.className = "px-5 py-2.5 rounded-lg font-semibold text-sm transition-all border border-slate-800 whitespace-nowrap " + 
+                        (idx === 0 ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-950 text-slate-300 hover:bg-slate-900");
+        selectorContainer.appendChild(btn);
+      });
+
+      if (assayColumns.length > 0) {
+        selectChemicalElement(assayColumns[0]);
+      }
+    }
+
+    function selectChemicalElement(element) {
+      activeChemicalElement = element;
+      const data = processedChemicals[element];
+      if (!data) return;
+
+      Object.keys(processedChemicals).forEach(el => {
+        const btn = document.getElementById(`btn-chem-${el}`);
+        if (btn) {
+          if (el === element) {
+            btn.className = "px-5 py-2.5 rounded-lg font-bold text-sm bg-amber-500 text-slate-950 transition-all border border-amber-500 shadow-lg";
+          } else {
+            btn.className = "px-5 py-2.5 rounded-lg font-semibold text-sm bg-slate-950 text-slate-300 hover:bg-slate-900 transition-all border border-slate-800";
+          }
+        }
+      });
+
+      // Actualizar estadísticos en ppb
+      document.getElementById('desc-chem-title').innerText = element;
+      document.getElementById('c-stat-cant').innerText = data.stats.cant;
+      document.getElementById('c-stat-min').innerText = data.stats.min;
+      document.getElementById('c-stat-max').innerText = data.stats.max;
+      document.getElementById('c-stat-mean').innerText = data.stats.mean;
+      document.getElementById('c-stat-med').innerText = data.stats.med;
+      document.getElementById('c-stat-std').innerText = data.stats.std;
+      document.getElementById('c-stat-q1').innerText = data.stats.q1;
+      document.getElementById('c-stat-q3').innerText = data.stats.q3;
+
+      // Actualizar panel de Outliers
+      document.getElementById('outlier-count-val').innerText = data.outliers.count.toLocaleString();
+      document.getElementById('outlier-percent-val').innerText = `${data.outliers.percent}%`;
+
+      // Actualizar límites lógicos en encabezado
+      document.getElementById('boxplot-limits-info').innerText = `IQR: ${data.stats.iqr} ppb | Límites de Outliers: [${data.stats.lowerLimit} ppb, ${data.stats.upperLimit} ppb]`;
+
+      const tableBody = document.getElementById('chem-table-body');
+      tableBody.innerHTML = '';
+      let accPercent = 0;
+
+      data.bins.general.labels.forEach((label, idx) => {
+        const count = data.bins.general.counts[idx];
+        const percent = (count / data.total) * 100;
+        accPercent += percent;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-3 font-mono">${label} ppb</td>
+          <td class="px-6 py-3 text-right">${count.toLocaleString()}</td>
+          <td class="px-6 py-3 text-right">${percent.toFixed(1)}%</td>
+          <td class="px-6 py-3 text-right">${accPercent.toFixed(1)}%</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      // Histograma 1: General
+      if (chemChartInstance) chemChartInstance.destroy();
+      const ctxG = document.getElementById('chemChart').getContext('2d');
+      chemChartInstance = new Chart(ctxG, {
+        type: 'bar',
+        data: {
+          labels: data.bins.general.labels,
+          datasets: [{
+            label: `Cantidad de muestras (General - ${element})`,
+            data: data.bins.general.counts,
+            backgroundColor: data.color,
+            borderColor: data.color.replace('0.85', '1'),
+            borderWidth: 1.5,
+            borderRadius: 4,
+            barPercentage: 0.95,
+            categoryPercentage: 0.95
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8' },
+              title: { display: true, text: 'Cantidad', color: '#cbd5e1', font: { size: 10, weight: 'bold' } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8', maxRotation: 15, autoSkip: true, font: { size: 9 } },
+              title: { display: true, text: `Rangos de leyes (ppb)`, color: '#cbd5e1', font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      // Lógica de filtrado dinámico para Cobre (Cu) y Molibdeno (Mo)
+      const elementUpper = element.toUpperCase();
+      const isCuOrMo = elementUpper.includes('CU') || elementUpper.includes('MO');
+
+      const supportContainer = document.getElementById('support-histograms-container');
+      const boxplotContainer = document.getElementById('card-boxplot');
+
+      if (isCuOrMo) {
+        // Ocultar contenedores de histogramas secundarios y boxplot
+        if (supportContainer) supportContainer.classList.add('hidden');
+        if (boxplotContainer) boxplotContainer.classList.add('hidden');
+
+        // Destruir instancias de gráficos secundarios para liberar memoria
+        if (chemChartCommonInstance) {
+          chemChartCommonInstance.destroy();
+          chemChartCommonInstance = null;
+        }
+        if (chemChartOutliersInstance) {
+          chemChartOutliersInstance.destroy();
+          chemChartOutliersInstance = null;
+        }
+      } else {
+        // Mostrar contenedores de histogramas secundarios y boxplot
+        if (supportContainer) supportContainer.classList.remove('hidden');
+        if (boxplotContainer) boxplotContainer.classList.remove('hidden');
+
+        // Histograma 2: Valores Comunes (Filtra Outliers)
+        if (chemChartCommonInstance) chemChartCommonInstance.destroy();
+        const ctxC = document.getElementById('chemChartCommon').getContext('2d');
+        
+        const commonLabels = data.bins.common.labels.length > 0 ? data.bins.common.labels : ["Sin datos comunes"];
+        const commonCounts = data.bins.common.counts.length > 0 ? data.bins.common.counts : [0];
+
+        chemChartCommonInstance = new Chart(ctxC, {
+          type: 'bar',
+          data: {
+            labels: commonLabels,
+            datasets: [{
+              label: `Cantidad (Comunes - ${element})`,
+              data: commonCounts,
+              backgroundColor: 'rgba(16, 185, 129, 0.8)',
+              borderColor: 'rgba(16, 185, 129, 1)',
+              borderWidth: 1.5,
+              borderRadius: 4,
+              barPercentage: 0.95,
+              categoryPercentage: 0.95
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: '#1e293b' },
+                ticks: { color: '#94a3b8' },
+                title: { display: true, text: 'Cantidad', color: '#cbd5e1', font: { size: 10, weight: 'bold' } }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#94a3b8', maxRotation: 15, autoSkip: true, font: { size: 9 } },
+                title: { display: true, text: `Leyes comunes en múltiplos redondeados (ppb)`, color: '#cbd5e1', font: { size: 10 } }
+              }
+            }
+          }
+        });
+
+        // Histograma 3: Valores Outliers
+        if (chemChartOutliersInstance) chemChartOutliersInstance.destroy();
+        const ctxO = document.getElementById('chemChartOutliers').getContext('2d');
+        
+        const outlierLabels = data.bins.outliers.labels.length > 0 ? data.bins.outliers.labels : ["Sin outliers"];
+        const outlierCounts = data.bins.outliers.counts.length > 0 ? data.bins.outliers.counts : [0];
+
+        chemChartOutliersInstance = new Chart(ctxO, {
+          type: 'bar',
+          data: {
+            labels: outlierLabels,
+            datasets: [{
+              label: `Cantidad (Outliers - ${element})`,
+              data: outlierCounts,
+              backgroundColor: 'rgba(239, 68, 68, 0.8)',
+              borderColor: 'rgba(239, 68, 68, 1)',
+              borderWidth: 1.5,
+              borderRadius: 4,
+              barPercentage: 0.95,
+              categoryPercentage: 0.95
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: '#1e293b' },
+                ticks: { color: '#94a3b8' },
+                title: { display: true, text: 'Cantidad', color: '#cbd5e1', font: { size: 10, weight: 'bold' } }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#94a3b8', maxRotation: 15, autoSkip: true, font: { size: 9 } },
+                title: { display: true, text: `Leyes extremas outliers (ppb)`, color: '#cbd5e1', font: { size: 10 } }
+              }
+            }
+          }
+        });
+
+        // Renderizado del Boxplot horizontal personalizado
+        drawCustomBoxplot(data);
+      }
+    }
+
+    // Dibujado del Boxplot personalizado con escala y ticks enteros redondeados en el eje X
+    function drawCustomBoxplot(data) {
+      const canvas = document.getElementById('boxplotCanvas');
+      if (!canvas) return;
+
+      const width = canvas.parentElement.clientWidth;
+      const height = 144; 
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+
+      const minVal = data.rawSortedValues[0];
+      const maxVal = data.rawSortedValues[data.rawSortedValues.length - 1];
+      const q1 = parseFloat(data.stats.q1.replace(/,/g, ''));
+      const med = parseFloat(data.stats.med.replace(/,/g, ''));
+      const q3 = parseFloat(data.stats.q3.replace(/,/g, ''));
+      const lowerLimit = parseFloat(data.stats.lowerLimit.replace(/,/g, ''));
+      const upperLimit = parseFloat(data.stats.upperLimit.replace(/,/g, ''));
+
+      // Definición de ventana gráfica de escala
+      const plotMin = Math.max(0, minVal);
+      const safeDiff = Math.max((q3 - q1), 10);
+      let plotMax = Math.min(maxVal, upperLimit + safeDiff * 1.5);
+      
+      if (plotMax <= plotMin || Math.abs(plotMax - plotMin) < 1) {
+        plotMax = maxVal > plotMin ? maxVal : plotMin + 100;
+      }
+
+      const paddingLeft = 50;
+      const paddingRight = 50;
+      const scaleWidth = width - paddingLeft - paddingRight;
+
+      // Mapeador espacial horizontal X
+      const getX = (val) => {
+        const normalized = (val - plotMin) / (plotMax - plotMin);
+        return paddingLeft + normalized * scaleWidth;
+      };
+
+      const centerY = 50; 
+      const boxHeight = 32;
+
+      // 1. Líneas de bigotes
+      const whiskerLeft = getX(Math.max(minVal, lowerLimit));
+      const whiskerRight = getX(Math.min(maxVal, upperLimit));
+
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(whiskerLeft, centerY);
+      ctx.lineTo(whiskerRight, centerY);
+      ctx.stroke();
+
+      // Tapas
+      ctx.beginPath();
+      ctx.moveTo(whiskerLeft, centerY - 10);
+      ctx.lineTo(whiskerLeft, centerY + 10);
+      ctx.moveTo(whiskerRight, centerY - 10);
+      ctx.lineTo(whiskerRight, centerY + 10);
+      ctx.stroke();
+
+      // 2. Caja Q1 a Q3
+      const xQ1 = getX(q1);
+      const xQ3 = getX(q3);
+      const boxW = Math.max(xQ3 - xQ1, 2); 
+
+      ctx.fillStyle = data.color.replace('0.85', '0.25');
+      ctx.fillRect(xQ1, centerY - boxHeight / 2, boxW, boxHeight);
+
+      ctx.strokeStyle = data.color.replace('0.85', '1');
+      ctx.lineWidth = 2;
+      ctx.strokeRect(xQ1, centerY - boxHeight / 2, boxW, boxHeight);
+
+      // 3. Mediana
+      const xMed = getX(med);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(xMed, centerY - boxHeight / 2);
+      ctx.lineTo(xMed, centerY + boxHeight / 2);
+      ctx.stroke();
+
+      // 4. Outliers individuales
+      const values = data.rawSortedValues;
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+      const step = Math.max(1, Math.floor(values.length / 400));
+      for (let i = 0; i < values.length; i += step) {
+        const v = values[i];
+        if (v < lowerLimit || v > upperLimit) {
+          const outlierX = getX(v);
+          if (outlierX >= paddingLeft && outlierX <= (width - paddingRight)) {
+            ctx.beginPath();
+            ctx.arc(outlierX, centerY, 3.5, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      }
+
+      // 5. Eje X visible (Unidades en ppb)
+      const axisY = centerY + boxHeight + 15;
+      
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(paddingLeft, axisY);
+      ctx.lineTo(width - paddingRight, axisY);
+      ctx.stroke();
+
+      // Generar y ordenar marcas de escala de concentración enteras
+      let axisTicks = [plotMin, q1, med, q3, upperLimit, plotMax];
+      axisTicks = [...new Set(axisTicks.map(v => Math.round(v)))].sort((a,b) => a-b);
+      
+      ctx.font = '10px Inter';
+      ctx.textAlign = 'center';
+
+      axisTicks.forEach(tick => {
+        const tickX = getX(tick);
+        if (tickX >= paddingLeft && tickX <= (width - paddingRight)) {
+          // Marca vertical
+          ctx.strokeStyle = '#334155';
+          ctx.beginPath();
+          ctx.moveTo(tickX, axisY);
+          ctx.lineTo(tickX, axisY + 4);
+          ctx.stroke();
+
+          // Etiqueta del valor entero
+          ctx.fillStyle = Math.abs(tick - med) < 2 ? '#f59e0b' : '#94a3b8';
+          ctx.fillText(tick.toLocaleString(), tickX, axisY + 16);
+        }
+      });
+
+      // Leyendas superiores de caja
+      ctx.fillStyle = '#64748b';
+      ctx.font = '9px Inter';
+      ctx.fillText(`Q1 (${Math.round(q1).toLocaleString()})`, xQ1, centerY - boxHeight / 2 - 6);
+      ctx.fillText(`Q3 (${Math.round(q3).toLocaleString()})`, xQ3, centerY - boxHeight / 2 - 6);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText(`Mediana (${Math.round(med).toLocaleString()})`, xMed, centerY - boxHeight / 2 - 6);
+    }
+
+    // SECCIÓN 3: Análisis Geológico (Litología)
+    function processGeologicalData() {
+      const litoHeader = Object.keys(rawLito[0]);
+      const litoCol = litoHeader.find(h => h.includes('LITO') || h.includes('ALTERACION') || h.includes('TIPO'));
+      if (!litoCol) return;
+
+      const litoCounts = {};
+      let totalTramos = 0;
+
+      rawLito.forEach(row => {
+        const lito = row[litoCol] || 'INDEFINIDA';
+        litoCounts[lito] = (litoCounts[lito] || 0) + 1;
+        totalTramos++;
+      });
+
+      const sortedLitos = Object.entries(litoCounts).sort((a, b) => b[1] - a[1]);
+
+      const tableBody = document.getElementById('lito-table-body');
+      tableBody.innerHTML = '';
+      
+      const colors = ['#fb923c', '#facc15', '#f87171', '#60a5fa', '#c084fc', '#818cf8', '#9ca3af', '#4ade80'];
+
+      sortedLitos.forEach(([lito, count], idx) => {
+        const percent = (count / totalTramos) * 100;
+        const color = colors[idx % colors.length];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-3 flex items-center gap-2"><span class="w-3 h-3 rounded-full" style="background-color: ${color}"></span>${lito}</td>
+          <td class="px-6 py-3 text-right">${count.toLocaleString()}</td>
+          <td class="px-6 py-3 text-right">${percent.toFixed(1)}%</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      if (litoChartInstance) litoChartInstance.destroy();
+      const ctx = document.getElementById('litoChart').getContext('2d');
+      litoChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: sortedLitos.map(l => l[0]),
+          datasets: [{
+            data: sortedLitos.map(l => l[1]),
+            backgroundColor: sortedLitos.map((_, idx) => colors[idx % colors.length]),
+            borderWidth: 1,
+            borderColor: '#020617'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { boxWidth: 12, color: '#cbd5e1', font: { size: 10, weight: 'bold' } }
+            }
+          }
+        }
+      });
+
+      const mainLito = sortedLitos[0][0];
+      const mainPercent = ((sortedLitos[0][1] / totalTramos) * 100).toFixed(1);
+      document.getElementById('lito-interpretation').innerHTML = `
+        El entorno geológico se encuentra controlado dominantemente por la unidad de <strong>${mainLito}</strong>, representando la litología de caja predominante con un total de <strong>${mainPercent}%</strong> de los tramos perforados mapeados. La distribución litológica secundaria sugiere un modelo intrusivo o de alteración magmático-hidrotermal donde las brechas tectónicas e ígneas actúan como guías principales para la depositación de metales de interés.
+      `;
+    }
+
+    // SECCIÓN 4: Análisis de Variables Espaciales / Geográficas (Collares)
+    function processSpatialData() {
+      const colHeaders = Object.keys(rawCollar[0]);
+      
+      const xCol = colHeaders.find(h => h.includes('LONG') || h.includes('EAST') || h.includes('ESTE') || h.includes('_E') || h === 'X');
+      const yCol = colHeaders.find(h => h.includes('LAT') || h.includes('NORTH') || h.includes('NORTE') || h.includes('_N') || h === 'Y');
+      const zCol = colHeaders.find(h => h.includes('ELEV') || h.includes('ALT') || h.includes('COTA') || h === 'Z');
+
+      if (!xCol || !yCol || !zCol) return;
+
+      const xVals = rawCollar.map(r => parseFloat(r[xCol])).filter(v => !isNaN(v));
+      const yVals = rawCollar.map(r => parseFloat(r[yCol])).filter(v => !isNaN(v));
+      const zVals = rawCollar.map(r => parseFloat(r[zCol])).filter(v => !isNaN(v));
+
+      if (xVals.length === 0) return;
+
+      const statsX = calcBasicStats(xVals);
+      const statsY = calcBasicStats(yVals);
+      const statsZ = calcBasicStats(zVals);
+
+      document.getElementById('collar-min-x').innerText = `${statsX.min.toLocaleString()} m`;
+      document.getElementById('collar-max-x').innerText = `${statsX.max.toLocaleString()} m`;
+      document.getElementById('collar-mean-x').innerText = `${statsX.mean.toLocaleString(undefined, {maximumFractionDigits: 1})} m`;
+
+      document.getElementById('collar-min-y').innerText = `${statsY.min.toLocaleString()} m`;
+      document.getElementById('collar-max-y').innerText = `${statsY.max.toLocaleString()} m`;
+      document.getElementById('collar-mean-y').innerText = `${statsY.mean.toLocaleString(undefined, {maximumFractionDigits: 1})} m`;
+
+      document.getElementById('collar-min-z').innerText = `${statsZ.min.toLocaleString()} m`;
+      document.getElementById('collar-max-z').innerText = `${statsZ.max.toLocaleString()} m`;
+      document.getElementById('collar-mean-z').innerText = `${statsZ.mean.toLocaleString(undefined, {maximumFractionDigits: 1})} m`;
+
+      const rangesZ = [
+        { label: 'Cotas Bajas (< 900 m)', min: 0, max: 900, count: 0 },
+        { label: 'Cotas Medias (900 - 1000 m)', min: 900, max: 1000, count: 0 },
+        { label: 'Cotas Altas (1000 - 1100 m)', min: 1000, max: 1100, count: 0 },
+        { label: 'Cotas Cumbres (> 1100 m)', min: 1100, max: 99999, count: 0 }
+      ];
+
+      zVals.forEach(v => {
+        for (let i = 0; i < rangesZ.length; i++) {
+          if (v >= rangesZ[i].min && v < rangesZ[i].max) {
+            rangesZ[i].count++;
+            break;
+          }
+        }
+      });
+
+      const zTableBody = document.getElementById('collar-z-table');
+      zTableBody.innerHTML = '';
+      rangesZ.forEach(r => {
+        const percent = (r.count / zVals.length) * 100;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-3">${r.label}</td>
+          <td class="px-6 py-3 text-right">${r.count}</td>
+          <td class="px-6 py-3 text-right">${percent.toFixed(1)}%</td>
+        `;
+        zTableBody.appendChild(tr);
+      });
+
+      const spatialPoints = rawCollar.map((r, idx) => {
+        const idCol = colHeaders[0];
+        return {
+          x: parseFloat(r[xCol]),
+          y: parseFloat(r[yCol]),
+          label: r[idCol] || `S-0${idx + 1}`
+        };
+      }).filter(p => !isNaN(p.x) && !isNaN(p.y));
+
+      if (spatialChartInstance) spatialChartInstance.destroy();
+      const ctx = document.getElementById('spatialChart').getContext('2d');
+      spatialChartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Ubicación de Collares',
+            data: spatialPoints.map(p => ({ x: p.x, y: p.y })),
+            backgroundColor: 'rgba(59, 130, 246, 0.85)',
+            borderColor: 'rgba(30, 58, 138, 1)',
+            borderWidth: 1.2,
+            pointRadius: 6,
+            pointHoverRadius: 9
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const pt = spatialPoints[context.dataIndex];
+                  return `${pt.label} (E: ${pt.x.toLocaleString()} m, N: ${pt.y.toLocaleString()} m)`;
+                }
+              }
+            },
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Coordenada Este (X) - Metros', color: '#cbd5e1', font: { weight: 'bold', size: 11 } },
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              title: { display: true, text: 'Coordenada Norte (Y) - Metros', color: '#cbd5e1', font: { weight: 'bold', size: 11 } },
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+    }
+
+    // SECCIÓN 4 - Procesamiento Analítico de Variables del Survey (Desviaciones)
+    function processSurveyData() {
+      if (!rawSurvey || rawSurvey.length === 0) return;
+
+      const surveyHeaders = Object.keys(rawSurvey[0]);
+      
+      const dipCol = surveyHeaders.find(h => h.includes('INCLIN') || h.includes('DIP') || h.includes('INC'));
+      const azCol = surveyHeaders.find(h => h.includes('AZIMUT') || h.includes('AZI') || h.includes('BEAR'));
+
+      if (!dipCol || !azCol) return;
+
+      const dipVals = rawSurvey.map(r => parseFloat(r[dipCol])).filter(v => !isNaN(v));
+      const azVals = rawSurvey.map(r => parseFloat(r[azCol])).filter(v => !isNaN(v));
+
+      if (dipVals.length === 0 || azVals.length === 0) return;
+
+      const statsDip = calcBasicStats(dipVals);
+      const statsAz = calcBasicStats(azVals);
+
+      // Mostrar inclinación y azimut en el panel de control
+      document.getElementById('survey-avg-dip').innerText = `${statsDip.mean.toFixed(2)}°`;
+      document.getElementById('survey-avg-azimuth').innerText = `${statsAz.mean.toFixed(2)}°`;
+    }
+
+    // SECCIÓN 5: Análisis de Variables Operacionales de Perforación
+    function processOperationalData() {
+      const assayHeaders = Object.keys(rawAssay[0]);
+      const desdeCol = assayHeaders.find(h => h.includes('DESDE') || h.includes('FROM') || h.includes('INI'));
+      const hastaCol = assayHeaders.find(h => h.includes('HASTA') || h.includes('TO') || h.includes('FIN'));
+
+      if (!desdeCol || !hastaCol) return;
+
+      const desdeVals = rawAssay.map(r => parseFloat(r[desdeCol])).filter(v => !isNaN(v));
+      const hastaVals = rawAssay.map(r => parseFloat(r[hastaCol])).filter(v => !isNaN(v));
+
+      if (desdeVals.length === 0) return;
+
+      const statsDesde = calcBasicStats(desdeVals);
+      const statsHasta = calcBasicStats(hastaVals);
+
+      document.getElementById('op-desde-min').innerText = `${statsDesde.min.toFixed(2)} m`;
+      document.getElementById('op-desde-max').innerText = `${statsDesde.max.toFixed(2)} m`;
+      document.getElementById('op-desde-mean').innerText = `${statsDesde.mean.toFixed(2)} m`;
+
+      document.getElementById('op-hasta-min').innerText = `${statsHasta.min.toFixed(2)} m`;
+      document.getElementById('op-hasta-max').innerText = `${statsHasta.max.toFixed(2)} m`;
+      document.getElementById('op-hasta-mean').innerText = `${statsHasta.mean.toFixed(2)} m`;
+
+      let sumInterval = 0;
+      let countInterval = 0;
+      rawAssay.forEach(row => {
+        const d = parseFloat(row[desdeCol]);
+        const h = parseFloat(row[hastaCol]);
+        if (!isNaN(d) && !isNaN(h)) {
+          sumInterval += (h - d);
+          countInterval++;
+        }
+      });
+
+      const avgInterval = sumInterval / countInterval;
+      document.getElementById('op-avg-interval-text').innerHTML = `
+        <strong>Soporte Longitudinal Promedio:</strong> El largo de muestra promedio del proyecto es de <strong>${avgInterval.toFixed(2)} metros</strong>. Esta longitud es altamente representativa para la cubicación de leyes y el aseguramiento del control de calidad geoquímico.
+      `;
+
+      const rangesOp = [
+        { label: 'Superficial (0 - 100 m)', min: 0, max: 100, count: 0 },
+        { label: 'Somerio (100 - 200 m)', min: 100, max: 200, count: 0 },
+        { label: 'Intermedio (200 - 300 m)', min: 200, max: 300, count: 0 },
+        { label: 'Profundo (300 - 400 m)', min: 300, max: 400, count: 0 },
+        { label: 'Ultraterreno (> 400 m)', min: 400, max: 9999, count: 0 }
+      ];
+
+      hastaVals.forEach(v => {
+        for (let i = 0; i < rangesOp.length; i++) {
+          if (v >= rangesOp[i].min && v < rangesOp[i].max) {
+            rangesOp[i].count++;
+            break;
+          }
+        }
+      });
+
+      const opTableBody = document.getElementById('op-table-body');
+      opTableBody.innerHTML = '';
+      rangesOp.forEach(r => {
+        const percent = (r.count / hastaVals.length) * 100;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-3">${r.label}</td>
+          <td class="px-6 py-3 text-right">${r.count.toLocaleString()}</td>
+          <td class="px-6 py-3 text-right">${percent.toFixed(1)}%</td>
+        `;
+        opTableBody.appendChild(tr);
+      });
+
+      if (opChartInstance) opChartInstance.destroy();
+      const ctx = document.getElementById('opChart').getContext('2d');
+      opChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: rangesOp.map(r => r.label.split(' (')[0]),
+          datasets: [{
+            label: 'Densidad de Ensayos por Rango de Profundidad',
+            data: rangesOp.map(r => r.count),
+            borderColor: 'rgba(126, 34, 206, 1)',
+            backgroundColor: 'rgba(126, 34, 206, 0.1)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 3,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8' },
+              title: { display: true, text: 'Cantidad de Registros', color: '#cbd5e1', font: { weight: 'bold' } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8' },
+              title: { display: true, text: 'Intervalo de Profundidad de Perforación', color: '#cbd5e1', font: { weight: 'bold' } }
+            }
+          }
+        }
+      });
+    }
+
+    // Auxiliar estadísticas básicas
+    function calcBasicStats(array) {
+      if (array.length === 0) return { min: 0, max: 0, mean: 0 };
+      const min = Math.min(...array);
+      const max = Math.max(...array);
+      const sum = array.reduce((a, b) => a + b, 0);
+      const mean = sum / array.length;
+      return { min, max, mean };
+    }
+  </script>
+</body>
+</html>
